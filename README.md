@@ -13,16 +13,8 @@ This directory contains custom PHP code for advanced Gravity Forms processing, C
 
 ---
 
-## 1. SubmissionToCSV.php
 
-A highly configurable class for converting Gravity Forms entries to CSV files and attaching them to notifications. Supports advanced field mapping, splitting repeating child sections, custom filenames, and automatic cleanup.
-
-### Key Features
-- **Flexible Field Mapping:** Map admin labels or field IDs to custom CSV columns.
-- **Child Data Splitting:** Optionally split repeating child sections into separate CSVs.
-- **Custom Filenames:** Supports custom filename prefixes.
-- **Extra Fields & Column Control:** Add extra fields, reorder, or remove columns.
-- **Automatic Cleanup:** Deletes generated CSVs after email notifications.
+## 1. SubmissionToCSV.php — Advanced Architectural & Data Processing Reference
 
 ### Configuration Options
 | Option            | Type           | Description                                                                 |
@@ -37,27 +29,88 @@ A highly configurable class for converting Gravity Forms entries to CSV files an
 | child_columns     | `array`        | Explicit child column names per child number.                               |
 | column_reorder    | `array`        | Operations to reorder or remove columns in main CSV.                        |
 
-### Hooks
-- **Notification Filter:** Attaches CSVs to Gravity Forms notifications.
-- **Email Action:** Cleans up CSV files after emails are sent.
+### 1.1 Architectural Overview
 
-### Usage Example
+SubmissionToCSV.php is engineered as a highly modular, extensible class for deterministic transformation of Gravity Forms entry data into CSV artifacts. The class is designed to operate in both monolithic and distributed form environments, supporting complex field mapping, child data segmentation, and robust integration with WordPress notification and file management APIs.
+
+#### Core Design Principles
+
+- **Config-Driven Instantiation:** The constructor accepts a configuration array, enabling declarative specification of mapping, splitting, column ordering, and file naming strategies. This allows for runtime flexibility and minimizes hardcoded logic.
+- **Hook Registration:** All integration points (notification attachment, post-email cleanup) are registered in the constructor, ensuring atomic initialization and encapsulation of side effects.
+- **Data Pipeline:** The class implements a multi-stage data pipeline: field extraction → mapping → child segmentation → column reordering → CSV serialization → file attachment → cleanup.
+
+### 1.2 Field Mapping & Extraction
+
+- **Admin Label Mapping:** The `field_map` configuration enables mapping of Gravity Forms admin labels to CSV column names or sublabel arrays. Supports both simple string mapping and complex sublabel aggregation.
+- **Field ID Mapping:** The `field_id_map` allows direct mapping of Gravity Forms field IDs to CSV columns, providing a fallback for fields lacking admin labels or for legacy forms.
+- **Sublabel Aggregation:** Supports aggregation of multiple sub-inputs into a single CSV column, with configurable separators and label matching logic. Handles date fields, dropdowns, and custom input structures.
+- **Edge Case Handling:** Implements multi-strategy extraction for date fields, including parsing combined date strings, sub-input decomposition, and fallback to main field values. Ensures robust extraction across Gravity Forms field types and plugin versions.
+
+### 1.3 Child Data Segmentation & CSV Generation
+
+- **Split Children Mode:** When `split_children` is enabled, the class segments child data into discrete CSVs based on either explicit `child_columns` or dynamically generated field names. Each child CSV is generated only if meaningful data is present, avoiding empty artifacts.
+- **Child Field Name Generation:** The `build_child_field_names` method constructs field names for each child section, supporting both explicit and dynamic naming strategies.
+- **Column Reordering:** The `column_reorder` configuration supports both removal and positional reordering of columns, enabling precise control over CSV schema. Operations are applied in sequence, with in-place mutation of the data array.
+- **Extra Fields Injection:** The `extra_fields` configuration allows injection of fields at the start and end of each CSV, supporting metadata, hidden fields, and integration tokens.
+
+#### CSV Serialization
+
+- **Header & Data Row Construction:** CSVs are serialized with explicit header rows derived from the mapped data keys, followed by sanitized data rows. Line endings and control characters are normalized to ensure compatibility with downstream processing tools.
+- **File Naming Strategy:** Filenames are constructed using configurable prefixes, entry IDs, and timestamps, supporting both deterministic and random naming schemes. Ensures uniqueness and traceability in multi-form environments.
+- **Upload Directory Integration:** Files are written to the WordPress upload directory, leveraging `wp_upload_dir()` for path resolution and ensuring compliance with WordPress file management conventions.
+
+### 1.4 Notification Integration & Cleanup
+
+- **Attachment Hook:** CSV files are attached to Gravity Forms notifications via the `gform_notification_{form_id}` filter. Attachment logic is scoped to specific notification names (e.g., 'Admin Notification'), avoiding cross-notification contamination.
+- **Post-Email Cleanup:** The `gform_after_email` action triggers cleanup of generated CSV files, ensuring that temporary artifacts do not persist beyond their intended lifecycle. Cleanup is atomic and robust against partial failures.
+
+### 1.5 Edge Cases & Advanced Scenarios
+
+- **Empty Child Handling:** Child CSVs are only generated if at least one key field (e.g., first_name, surname) contains meaningful data, avoiding empty files and reducing noise in notification attachments.
+- **Date Field Parsing:** Implements multi-strategy parsing for date fields, including AU-format (DD/MM/YYYY) handling, sub-input decomposition, and fallback to main field values. Ensures compatibility with Gravity Forms’ evolving field conventions.
+- **Multi-Form Support:** The class can be instantiated multiple times for different forms, each with its own configuration, supporting heterogeneous form schemas and notification workflows.
+- **Legacy Compatibility:** Supports legacy field structures and procedural CSV splitting logic, enabling gradual migration to OOP paradigms.
+
+### 1.6 Extensibility & Customization
+
+- **Declarative Configuration:** All mapping, splitting, and ordering logic is specified via configuration arrays, enabling runtime customization and minimizing code changes.
+- **Subclassing & Method Override:** Advanced users can subclass SubmissionToCSV to override extraction, mapping, or serialization logic for bespoke requirements.
+- **Integration with External Systems:** CSV artifacts can be further processed, uploaded, or integrated with external systems via post-processing hooks or custom notification actions.
+
+### 1.7 Example: Complex Configuration
+
 ```php
 new SubmissionToCSV(21, array(
     'field_map' => array(
         'Educator Name' => array(
-            'first_name' => 'Educator First Name',
-            'last_name'  => 'Educator Last Name',
+            'first_name' => array('labels' => ['First Name'], 'separator' => ' '),
+            'last_name'  => array('labels' => ['Last Name'], 'separator' => ' '),
+        ),
+        'Incident Date' => array(
+            'incident_day'   => 'Day',
+            'incident_month' => 'Month',
+            'incident_year'  => 'Year',
         ),
         // ...
     ),
     'field_id_map' => array(
         13 => 'time_of_incident',
+        22 => 'incident_location',
     ),
     'filename_prefix' => 'ihc-',
     'extra_fields' => array(
-        'start' => array('hidden_form_id' => ''),
-        'end' => array('hidden_contact_entry_id' => '', 'contact_entry_id' => ''),
+        'start' => array('hidden_form_id' => '', 'submission_token' => ''),
+        'end' => array('hidden_contact_entry_id' => '', 'contact_entry_id' => '', 'integration_id' => ''),
+    ),
+    'split_children' => true,
+    'child_count' => 7,
+    'child_columns' => array(
+        1 => ['child_1_first_name', 'child_1_surname', 'child_1_date_of_birth_day', 'child_1_date_of_birth_month', 'child_1_date_of_birth_year'],
+        // ...
+    ),
+    'column_reorder' => array(
+        array('action' => 'remove', 'column' => 'parent_2_address'),
+        array('action' => 'move_before', 'column' => 'incident_location', 'before' => 'incident_date'),
     ),
 ));
 ```
