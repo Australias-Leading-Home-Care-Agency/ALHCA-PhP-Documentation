@@ -65,114 +65,102 @@ new SubmissionToCSV(21, array(
 ---
 
 
-## 2. GravityFormsCustomRules.php — Advanced Technical Documentation
 
-### 2.1 Overview
+## 2. GravityFormsCustomRules.php — Deep Technical Reference
 
-GravityFormsCustomRules.php implements a modular, object-oriented framework for enforcing custom validation and UI rules on Gravity Forms fields within WordPress. The class is designed for extensibility, maintainability, and robust integration with Gravity Forms’ hooks and client-side behaviors.
+### 2.1 Architectural Synopsis
 
-### 2.2 Architectural Principles
+GravityFormsCustomRules.php is architected as a high-cohesion, low-coupling module for deterministic enforcement of Gravity Forms field constraints. The class leverages the WordPress plugin API and Gravity Forms’ extensible event model to inject both server-side and client-side controls, ensuring that business logic is not only enforced at the UI layer but also at the data validation boundary.
 
-- **OOP Encapsulation:** All rules are encapsulated within a class, allowing for easy extension and override.
-- **Hook Registration:** Rules are registered via WordPress and Gravity Forms hooks in the constructor, ensuring self-registration and minimal boilerplate.
-- **Dual Enforcement:** Both server-side (PHP) and client-side (JavaScript) enforcement are used for critical rules, providing defense-in-depth against bypasses.
-- **Single Responsibility:** Each method is responsible for a distinct aspect of rule enforcement, facilitating unit testing and future refactoring.
+#### Class Structure & Hook Binding
 
-### 2.3 Integration Points
+- **Constructor Pattern:** The class constructor is responsible for registering all relevant hooks, filters, and actions. This ensures that instantiation is atomic and side-effect free, and that all rule logic is encapsulated within the class scope.
+- **Event-Driven Enforcement:** Hooks such as `gform_datepicker_options_pre_init` and `gform_enqueue_scripts` are bound to class methods, allowing for granular interception of Gravity Forms lifecycle events.
+- **Field Targeting:** All rule logic is parameterized by form and field IDs, allowing for precise targeting and avoiding cross-form contamination. This is critical in multi-form deployments where field semantics may diverge.
 
-- **WordPress & Gravity Forms Hooks:**
-    - `gform_datepicker_options_pre_init`: Filters datepicker options before initialization, allowing for dynamic restriction of selectable dates.
-    - `gform_enqueue_scripts`: Injects custom JavaScript into the form rendering pipeline, enabling client-side enforcement and UI modifications.
-- **Form & Field Targeting:**
-    - Rules are scoped to specific form and field IDs (e.g., Form #21, Field #9), preventing unintended side effects on other forms.
-    - The class can be extended to support multiple forms/fields via configuration arrays or dynamic registration.
-
-### 2.4 Rule Implementation: Date Locking
+### 2.2 Integration & Execution Flow
 
 - **Server-Side Enforcement:**
-    - The `lock_field_to_today` method intercepts datepicker initialization for Form #21, Field #9.
-    - Sets both `minDate` and `maxDate` to 0, restricting the datepicker to only allow the current date.
-    - Ensures that even if JavaScript is disabled, the field cannot be set to a date outside today via Gravity Forms’ backend validation.
+    - The `lock_field_to_today` method is registered as a filter on the datepicker options initialization event. It mutates the options object, setting `minDate` and `maxDate` to zero, thereby constraining the selectable date range to the current day. This mutation is performed in situ, ensuring compatibility with downstream Gravity Forms logic.
+    - The server-side filter is robust against client-side circumvention, as Gravity Forms will reject invalid dates during backend processing.
 - **Client-Side Enforcement:**
-    - The `add_datepicker_lock_js` method injects a script that:
-        - Sets the field value to today’s date in DD/MM/YYYY format.
-        - Disables manual typing and pasting into the field, preventing user circumvention.
-        - Restricts the jQuery UI datepicker widget to only allow today.
-        - Listens for changes and forcibly resets the value if the user attempts to select a different date.
-- **Edge Cases & Fallbacks:**
-    - If the field is not rendered as a datepicker (e.g., due to theme conflicts), the script still disables manual input.
-    - The script checks for the presence of the field and its classes before applying restrictions, avoiding JavaScript errors.
+    - The `add_datepicker_lock_js` method injects a JavaScript payload into the form rendering pipeline. This script programmatically sets the field value to the current date, disables manual input (keydown/paste), and configures the jQuery UI datepicker widget to restrict selection to today. The script also listens for change events, forcibly resetting the value if the user attempts to select an invalid date.
+    - The client-side logic is defensive, checking for field presence and class membership before applying restrictions, thereby avoiding runtime errors in edge-case scenarios.
 
-### 2.5 Extending the Class
+#### Edge Case Handling
 
-- **Adding New Rules:**
-    - Register additional hooks in the constructor.
-    - Implement new methods for each rule, following the single-responsibility principle.
-    - Use configuration arrays to support multiple forms/fields.
-- **Example: Custom Validation**
+- If the field is not rendered as a datepicker (e.g., due to theme or plugin conflicts), the script falls back to disabling manual input, ensuring that the constraint is still enforced.
+- The script is injected on every form render, including AJAX-loaded forms, guaranteeing consistent enforcement across dynamic UI states.
+
+### 2.3 Extensibility & Custom Rule Injection
+
+- **Rule Registration:**
+    - New rules can be registered by binding additional hooks in the constructor. Each rule should be encapsulated in its own method, adhering to the single-responsibility principle.
+    - For complex scenarios, consider parameterizing the class with a configuration array mapping form/field IDs to rule definitions. This enables dynamic rule registration and reduces boilerplate.
+- **Example: Custom Field Validation**
 
 ```php
 class GravityFormsCustomRules {
+    // ...existing code...
+
+    public function __construct() {
         // ...existing code...
+        add_filter('gform_field_validation_21_10', array($this, 'validate_custom_field'), 10, 4);
+    }
 
-        public function __construct() {
-                // ...existing code...
-                add_filter('gform_field_validation_21_10', array($this, 'validate_custom_field'), 10, 4);
+    public function validate_custom_field($result, $value, $form, $field) {
+        if ($value !== 'expected') {
+            $result['is_valid'] = false;
+            $result['message'] = 'Custom validation failed.';
         }
-
-        public function validate_custom_field($result, $value, $form, $field) {
-                if ($value !== 'expected') {
-                        $result['is_valid'] = false;
-                        $result['message'] = 'Custom validation failed.';
-                }
-                return $result;
-        }
+        return $result;
+    }
 }
 ```
 
-### 2.6 Security Considerations
+### 2.4 Security & Data Integrity
 
-- **Input Sanitization:** All user input should be validated and sanitized, both server-side and client-side.
-- **Defense-in-Depth:** By enforcing rules at multiple layers, the class mitigates risks from JavaScript-disabled browsers, malicious users, and plugin conflicts.
-- **Auditability:** The OOP structure allows for easy auditing and code review, with clear separation of concerns.
+- **Input Validation:** All user input is validated and sanitized at both the client and server layers. The dual enforcement model ensures that even if JavaScript is disabled or bypassed, server-side validation will reject invalid data.
+- **Defense-in-Depth:** By layering constraints at multiple points in the execution flow, the class mitigates risks from malicious actors, plugin conflicts, and browser idiosyncrasies.
+- **Auditability:** The OOP structure and event-driven design facilitate code review and auditing, with clear traceability from hook registration to rule execution.
 
-### 2.7 Performance & Reliability
+### 2.5 Performance, Reliability & Compatibility
 
-- **Minimal Overhead:** Hooks are registered only for targeted forms/fields, avoiding unnecessary processing.
-- **Graceful Degradation:** If JavaScript fails to load, server-side restrictions remain in place.
-- **Compatibility:** Designed to work with Gravity Forms’ standard field rendering and jQuery UI datepicker.
+- **Minimal Overhead:** Hooks are registered only for targeted forms/fields, minimizing runtime overhead and avoiding unnecessary event processing.
+- **Graceful Degradation:** If client-side scripts fail to load, server-side restrictions remain active, ensuring that constraints are always enforced.
+- **Compatibility:** The module is designed to interoperate with Gravity Forms’ standard field rendering and jQuery UI datepicker, and is resilient to theme/plugin overrides.
 
-### 2.8 Troubleshooting & Edge Cases
+### 2.6 Troubleshooting & Advanced Scenarios
 
-- **Field Not Found:** If the field selector changes (e.g., due to theme or plugin updates), update the JavaScript selector accordingly.
-- **Multiple Date Fields:** Extend the class to handle arrays of field IDs if multiple date fields require locking.
-- **AJAX Forms:** The script is injected on every form render, including AJAX-loaded forms, ensuring consistent enforcement.
+- **Selector Drift:** If field selectors change due to theme or plugin updates, update the JavaScript selector logic accordingly. Consider abstracting selectors into a configuration array for maintainability.
+- **Multi-Field Constraints:** Extend the class to handle arrays of field IDs for scenarios where multiple fields require identical constraints.
+- **AJAX & Dynamic Forms:** The script is injected on every form render, including AJAX-loaded forms, ensuring that constraints persist across dynamic UI states.
 
-### 2.9 Future Enhancements
+### 2.7 Future Directions
 
-- **Configurable Rules:** Refactor to accept a configuration array for dynamic rule registration.
-- **Unit Tests:** Implement PHPUnit tests for server-side methods.
-- **Admin UI:** Provide a WordPress admin interface for managing custom rules.
+- **Configurable Rule Engine:** Refactor the class to accept a configuration array for dynamic rule registration, enabling declarative constraint specification.
+- **Automated Testing:** Implement PHPUnit tests for server-side methods and JavaScript unit tests for client-side logic.
+- **Administrative UI:** Develop a WordPress admin interface for managing custom rules, enabling non-developer configuration.
 
-### 2.10 Example Usage & Initialization
+### 2.8 Usage & Initialization
 
-The class is initialized automatically:
+The class is instantiated as follows:
 
 ```php
 new GravityFormsCustomRules();
 ```
 
-To extend for additional rules, subclass or modify the constructor to register more hooks.
+For advanced scenarios, subclass or parameterize the constructor to register additional rules or inject configuration.
 
-### 2.11 References
+### 2.9 Reference Materials
 
-- [Gravity Forms Developer Documentation](https://docs.gravityforms.com/)
-- [WordPress Plugin API](https://developer.wordpress.org/plugins/hooks/)
-- [jQuery UI Datepicker](https://jqueryui.com/datepicker/)
+- Gravity Forms Developer Documentation: https://docs.gravityforms.com/
+- WordPress Plugin API: https://developer.wordpress.org/plugins/hooks/
+- jQuery UI Datepicker: https://jqueryui.com/datepicker/
 
-### 2.12 Contact & Support
+### 2.10 Support & Contact
 
-For advanced customization or troubleshooting, contact the ALHCA web development team or consult the references above.
+For advanced customization, integration, or troubleshooting, contact the ALHCA web development team or consult the reference materials above.
 
 ---
 
