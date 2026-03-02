@@ -1,20 +1,106 @@
+
 # ALHCA Website Submission & Customization Codebase
 
-This directory contains custom PHP code for advanced Gravity Forms processing, CSV export, and theme-level enhancements for the ALHCA website. It is designed for maintainability, extensibility, and robust integration with WordPress and Gravity Forms.
+This codebase contains custom PHP and supporting scripts for advanced Gravity Forms processing, CSV export, PDF generation, and theme-level enhancements for the ALHCA website. It is designed for maintainability, extensibility, and robust integration with WordPress and Gravity Forms.
 
 ---
 
+## Directory Structure & File Overview
 
-## Contents
-
-- `SubmissionToCSV.php` - OOP class for exporting Gravity Forms entries to CSV, with flexible mapping and child data splitting.
-- `GravityFormsCustomRules.php` - OOP class for enforcing custom Gravity Forms field rules (e.g., date locking).
-- `GravityFormsProcessingSpinner.php` - OOP class to prevent duplicate form submissions with a processing spinner overlay.
-- `Functions.php` - Main theme functions file, containing hooks, filters, and legacy logic.
-- `GravityFormsRepeatedFieldsEducationalPlanner.php` - OOP class for injecting custom repeater fields into Gravity Forms (Form 25), supporting multi-block child data entry and admin label mapping for export compatibility.
-- `GravityPDF/blank-slate-custom.php` - Custom Gravity PDF template for Form 25, designed to output repeater field data in a print-friendly layout. Supports looping through child blocks and displaying all admin-labeled fields.
+```
+Core_Website_Work/
+    SubmissionToCSV.php
+    GravityFormsCustomRules.php
+    GravityFormsProcessingSpinner.php
+    GravityFormsRepeatedFieldsEducationalPlanner.php
+    Functions.php
+    GravityPDF/
+        blank-slate-custom.php
+    Security/
+        PageAccessController.php
+    Save&Continue/
+        SaveAndContinue.php
+Misc/
+    compression-tester.html
+    gravity_forms_stress_tool.py
+    Signature_Field_2.html
+    signature_field.html
+    superforms-compressor.js
+    Wordpress Test Keys.txt
+```
 
 ---
+
+## 1. SubmissionToCSV.php — Advanced CSV Export
+...existing section 1...
+
+## 2. GravityFormsCustomRules.php — Custom Field Rules
+...existing section 2...
+
+## 3. GravityFormsProcessingSpinner.php — Submission Spinner
+...existing section 3...
+
+## 4. GravityFormsRepeatedFieldsEducationalPlanner.php — Custom Repeater Field Injection
+...existing section 5...
+
+## 5. GravityPDF/blank-slate-custom.php — Custom PDF Template
+...existing section 6...
+
+## 6. Functions.php — Theme & Integration Logic
+...existing section 4...
+
+## 7. Security/PageAccessController.php — Access Control & Protection
+This script is responsible for enforcing custom access control and security logic across the ALHCA website. It is designed to:
+
+- Restrict access to sensitive pages and resources based on user roles, authentication status, or other criteria.
+- Provide hooks and filters for advanced permission checks, including admin-only sections, client-specific content, and more.
+- Integrate with WordPress user management and session APIs for robust security.
+- Log or block unauthorized access attempts, optionally redirecting users or displaying custom error messages.
+- Serve as a central point for future security enhancements, such as rate limiting, IP blocking, or audit logging.
+
+**Usage:**
+- Require this file in Functions.php to activate its protections.
+- Extend or configure its logic to match evolving business and compliance requirements.
+
+**Best Practices:**
+- Keep all access control logic centralized for maintainability and auditability.
+- Regularly review and update rules to address new security threats or changes in user roles.
+
+---
+
+## 8. Save&Continue/SaveAndContinue.php — Save & Continue Enhancements
+- Adds custom logic for Gravity Forms Save & Continue feature.
+- Can be used to extend or modify the default storage length, user experience, or recovery options for incomplete submissions.
+
+---
+
+## 9. Miscellaneous Scripts
+- `compression-tester.html` — Tool for testing file compression in the browser.
+- `gravity_forms_stress_tool.py` — Python script for stress-testing Gravity Forms endpoints.
+- `Signature_Field_2.html`, `signature_field.html` — HTML templates for signature field requirements and testing.
+- `superforms-compressor.js` — JavaScript utility for compressing Super Forms data.
+- `Wordpress Test Keys.txt` — Reference file for test API keys and credentials.
+
+---
+
+## 10. GravityPDF Template Management
+- Custom PDF templates (e.g., `GravityPDF/blank-slate-custom.php`) should be uploaded to `wp-content/uploads/PDF_EXTENDED_TEMPLATES/`.
+- After uploading, select the template in the Gravity PDF feed settings for the relevant form.
+- To update a template, replace the file and re-save the PDF feed configuration.
+
+---
+
+## 11. General Development Notes
+...existing section 7...
+
+## 12. Adding New Features
+...existing section 8...
+
+## 13. Contact & Support
+...existing section 9...
+
+## 14. License
+© Australia’s Leading Home Care Agency. All rights reserved.
 
 
 ## 1. SubmissionToCSV.php — Advanced Architectural & Data Processing Reference
