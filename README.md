@@ -220,7 +220,6 @@ For advanced customization, integration, or troubleshooting, contact the ALHCA w
 
 ---
 
-
 ## 3. GravityFormsProcessingSpinner.php
 
 Prevents users from submitting a Gravity Form multiple times by disabling the submit button and displaying a processing spinner overlay.
@@ -307,6 +306,56 @@ Upload the file to `wp-content/uploads/PDF_EXTENDED_TEMPLATES/` and select it in
 ## 9. Contact & Support
 
 For questions or contributions, contact the ALHCA web development team.
+
+---
+
+
+## 10. Additional Components & Utilities
+
+### TraceMail.php — Email Trigger Debugging
+
+- Adds a filter to Gravity Forms email notifications to trace the source of email triggers.
+- Captures and reports the PHP stack trace when specific emails are sent, helping locate the origin of notification logic.
+- Useful for debugging complex form workflows and ensuring correct notification routing.
+
+
+## 7. Security/PageAccessController.php — Access Control & Protection
+
+This script is responsible for enforcing custom access control and security logic across the ALHCA website. It is designed to:
+
+- Restrict access to sensitive pages and resources based on user roles, authentication status, or other criteria.
+- Provide hooks and filters for advanced permission checks, including admin-only sections, client-specific content, and more.
+- Integrate with WordPress user management and session APIs for robust security.
+- Log or block unauthorized access attempts, optionally redirecting users or displaying custom error messages.
+- Serve as a central point for future security enhancements, such as rate limiting, IP blocking, or audit logging.
+
+**Usage:**
+- Require this file in Functions.php to activate its protections.
+- Extend or configure its logic to match evolving business and compliance requirements.
+
+**Best Practices:**
+- Keep all access control logic centralized for maintainability and auditability.
+- Regularly review and update rules to address new security threats or changes in user roles.
+
+---
+
+## 8. Save&Continue/SaveAndContinue.php — Save & Continue Enhancements
+
+- Adds custom logic for Gravity Forms Save & Continue feature.
+- Can be used to extend or modify the default storage length, user experience, or recovery options for incomplete submissions.
+
+## 9. Miscellaneous Scripts
+
+- `compression-tester.html` — Tool for testing file compression in the browser.
+- `gravity_forms_stress_tool.py` — Python script for stress-testing Gravity Forms endpoints.
+- `Signature_Field_2.html`, `signature_field.html` — HTML templates for signature field requirements and testing.
+- `superforms-compressor.js` — JavaScript utility for compressing Super Forms data.
+
+## 10. GravityPDF Template Management
+
+- Custom PDF templates (e.g., `GravityPDF/blank-slate-custom.php`) should be uploaded to `wp-content/uploads/PDF_EXTENDED_TEMPLATES/`.
+- After uploading, select the template in the Gravity PDF feed settings for the relevant form.
+- To update a template, replace the file and re-save the PDF feed configuration.
 
 ---
 
